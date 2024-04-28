@@ -147,6 +147,18 @@ impl<const N: usize> BezierCurve<N> {
 
     /// Draw the curve
     pub fn draw(&self, d: &mut RaylibDrawHandle) {
+        for line_points in self.points.windows(2) {
+            d.draw_line_ex(line_points[0].position, line_points[1].position, 3.0, Color::RED);
+        }
+
+        d.draw_line_bezier_quad(
+            self.points[0].position,
+            self.points[2].position,
+            self.points[1].position,
+            4.0,
+            Color::GREEN,
+        );
+
         for point in self.points.iter() {
             point.draw(d);
         }
