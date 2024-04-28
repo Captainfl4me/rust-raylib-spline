@@ -1,5 +1,7 @@
 use raylib::prelude::*;
+use std::ffi::CStr;
 
+const T_ANIMATION_SPEED: f32 = 0.005;
 fn main() {
     let (mut rl_handle, rl_thread) = raylib::init()
         .size(640, 480)
@@ -13,9 +15,16 @@ fn main() {
     let points = [
         Vector2::new(300.0, 600.0),
         Vector2::new(600.0, 300.0),
-        Vector2::new(900.0, 600.0),
+        Vector2::new(900.0, 300.0),
+        Vector2::new(1200.0, 600.0),
     ];
     let mut curve = BezierCurve::new(points);
+    let mut animated = true;
+    let mut animation_bounce = false;
+
+    let mut t = 0.5;
+    let left_slider_test = CStr::from_bytes_with_nul(b"0.0\0").unwrap();
+    let right_slider_test = CStr::from_bytes_with_nul(b"1.0\0").unwrap();
 
     while !rl_handle.window_should_close() {
         let mouse_position = Vector2::new(
@@ -31,15 +40,48 @@ fn main() {
         }
 
         let mut rl_draw_handle = rl_handle.begin_drawing(&rl_thread);
+        let screen_width = rl_draw_handle.get_screen_width();
 
         #[cfg(debug_assertions)]
-        rl_draw_handle.draw_fps(12, 12);
+        rl_draw_handle.draw_fps(screen_width - 100, 10);
 
-        curve.draw(&mut rl_draw_handle);
+        t = rl_draw_handle.gui_slider_bar(
+            Rectangle::new(30.0, 20.0, 200.0, 25.0),
+            Some(left_slider_test),
+            Some(right_slider_test),
+            t,
+            0.0,
+            1.0,
+        );
+
+        curve.draw(&mut rl_draw_handle, Some(t));
+
+        if animated {
+            t += if animation_bounce { -T_ANIMATION_SPEED } else { T_ANIMATION_SPEED };
+            if t >= 1.0 {
+                t = 1.0;
+                animation_bounce = true;
+            } else if t <= 0.0 {
+                t = 0.0;
+                animation_bounce = false;
+            }
+        }
 
         rl_draw_handle.clear_background(Color::BLACK);
         // d.draw_text("Hello, world!", 12, 12, 20, Color::BLACK);
     }
+}
+
+fn binomial(n: u64, k: u64) -> u64 {
+    if n > 67 {
+        panic!("n is too large");
+    }
+    let mut result = 1;
+    for i in 0..k {
+        result *= n - i;
+        result /= i + 1;
+    }
+    result
 }
 
 const POINTS_RADIUS: f32 = 10.0;
@@ -89,6 +131,7 @@ impl Point {
     }
 }
 
+const SAMPLES: usize = 50;
 struct BezierCurve<const N: usize> {
     points: [Point; N],
     has_point_selected: bool,
@@ -145,42 +188,69 @@ impl<const N: usize> BezierCurve<N> {
         self.has_point_selected = false;
     }
 
+    pub fn evalute(&self, t: f32) -> Vector2 {
+        let n = self.points.len()-1;
+        let tuple_point = self
+            .points
+            .iter()
+            .enumerate()
+            .fold((0.0, 0.0), |acc, (i, e)| {
+                let a = (binomial(n as u64, i as u64) as f32)
+                    * (1.0 - t).powi((n - i) as i32)
+                    * t.powi(i as i32);
+                (acc.0 + e.position.x * a, acc.1 + e.position.y * a)
+            });
+        Vector2::new(tuple_point.0, tuple_point.1)
+    }
+
     /// Draw the curve
-    pub fn draw(&self, d: &mut RaylibDrawHandle) {
+    pub fn draw(&self, d: &mut RaylibDrawHandle, t: Option<f32>) {
         for line_points in self.points.windows(2) {
-            d.draw_line_ex(line_points[0].position, line_points[1].position, 3.0, Color::RED);
+            d.draw_line_ex(
+                line_points[0].position,
+                line_points[1].position,
+                3.0,
+                Color::RED,
+            );
         }
 
-        d.draw_line_bezier_quad(
-            self.points[0].position,
-            self.points[2].position,
-            self.points[1].position,
-            4.0,
-            Color::GREEN,
-        );
+        let mut final_point = None;
+        if let Some(t) = t {
+            let mut debug_points: Vec<Vector2> =
+                self.points.iter().map(|p| p.position).collect::<Vec<_>>();
+            while debug_points.len() > 2 {
+                let next_points = debug_points
+                    .windows(2)
+                    .map(|w| w[0].lerp(w[1], t))
+                    .collect::<Vec<_>>();
+                // Drawing lines before points so that points will override them
+                for p in next_points.windows(2) {
+                    d.draw_line_ex(p[0], p[1], 2.0, Color::RED);
+                }
+                // Draw lerp points for this run
+                for p in next_points.iter() {
+                    d.draw_circle_v(p, POINTS_RADIUS / 2.0, Color::GREEN);
+                }
+                debug_points = next_points;
+            }
+            final_point = Some(debug_points[0].lerp(debug_points[1], t));
+        }
+
+        let step = 1.0 / SAMPLES as f32;
+        let points = (0..=SAMPLES)
+            .map(|i| self.evalute(i as f32 * step))
+            .collect::<Vec<_>>();
+
+        for line_points in points.windows(2) {
+            d.draw_line_ex(line_points[0], line_points[1], 4.0, Color::GREEN);
+        }
+
+        if let Some(final_point) = final_point {
+            d.draw_circle_v(final_point, POINTS_RADIUS / 2.0, Color::YELLOW);
+        }
 
         for point in self.points.iter() {
             point.draw(d);
         }
     }
-
-    /* pub fn mouse_can_select_point(&self, mouse_position: Vector2) -> Option<usize> {
-            let mut closest_point = 0;
-            let mut closest_distance = mouse_position.distance_to(self.points[0]);
-            for (i, point) in self.points.iter().skip(1).enumerate() {
-                let distance = mouse_position.distance_to(*point);
-                if distance < closest_distance {
-                    closest_distance = distance;
-                    closest_point = i;
-                }
-            }
-            if closest_distance < POINTS_RADIUS {
-                return Some(closest_point);
-            }
-            None
-        }
-    */
-    /* pub fn move_point(&mut self, point: usize, new_position: Vector2) {
-        self.points[point] = new_position;
-    } */
 }
