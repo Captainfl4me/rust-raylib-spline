@@ -16,5 +16,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Setup env
+      run: rustup target add wasm32-unknown-emscripten
     - name: Build
       run: ./build_wasm.sh
