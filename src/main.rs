@@ -50,7 +50,7 @@ fn main() {
         for point in points.iter_mut() {
             point.udpate(mouse_position);
         }
-        if rl_handle.is_mouse_button_down(MouseButton::MOUSE_LEFT_BUTTON) {
+        if rl_handle.is_mouse_button_down(MouseButton::MOUSE_BUTTON_LEFT) {
             if !has_point_selected {
                 for point in points.iter_mut() {
                     if point.is_hovered {
@@ -94,18 +94,18 @@ fn main() {
         rl_draw_handle.draw_fps(screen_width - 100, 10);
 
         // Draw GUI Controls
-        t = rl_draw_handle.gui_slider_bar(
+        rl_draw_handle.gui_slider_bar(
             Rectangle::new(30.0, 20.0, 200.0, 25.0),
             Some(left_slider_text),
             Some(right_slider_text),
-            t,
+            &mut t,
             0.0,
             1.0,
         );
-        animated = rl_draw_handle.gui_toggle(
+        rl_draw_handle.gui_toggle(
             Rectangle::new(30.0, 50.0, 200.0, 25.0),
             Some(animation_toggle_text),
-            animated,
+            &mut animated,
         );
 
         draw_bezier(&points, &mut rl_draw_handle, Some(t));
