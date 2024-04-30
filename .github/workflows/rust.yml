@@ -27,7 +27,7 @@ jobs:
         uses: actions/configure-pages@v3
       
       - name: Clean Output
-        run: cp index.html ./www && cp ./target/wasm32-unknown-emscripten/release/spline-drawer.d ./www && cp ./target/wasm32-unknown-emscripten/release/spline-drawer.js ./www && cp ./target/wasm32-unknown-emscripten/release/spline_drawer.wasm ./www
+        run: mkdir www && cp index.html ./www/ && cp ./target/wasm32-unknown-emscripten/release/spline-drawer.d ./www/ && cp ./target/wasm32-unknown-emscripten/release/spline-drawer.js ./www/ && cp ./target/wasm32-unknown-emscripten/release/spline_drawer.wasm ./www/
 
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v1
