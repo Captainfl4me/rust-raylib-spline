@@ -6,7 +6,7 @@ fn main() {
     let (mut rl_handle, rl_thread) = raylib::init()
         .size(640, 480)
         .resizable()
-        .title("Hello, World")
+        .title("Spline drawer")
         .build();
     rl_handle.set_target_fps(60);
     rl_handle.set_window_state(rl_handle.get_window_state().set_window_maximized(true));
@@ -32,11 +32,13 @@ fn main() {
     let mut animated = true;
     let mut animation_bounce = false;
     let mut has_point_selected = false;
+    let mut debug_draw = true;
 
     let mut t = 0.5;
     let left_slider_text = CStr::from_bytes_with_nul(b"0.0\0").unwrap();
     let right_slider_text = CStr::from_bytes_with_nul(b"1.0\0").unwrap();
     let animation_toggle_text = CStr::from_bytes_with_nul(b"Animate T value\0").unwrap();
+    let debug_text = CStr::from_bytes_with_nul(b"Activate debug draw\0").unwrap();
 
     while !rl_handle.window_should_close() {
         // Update inputs
@@ -71,10 +73,11 @@ fn main() {
             if !has_point_selected {
                 match key {
                     KeyboardKey::KEY_SPACE => {
-                        if points.len() >= 62 { break; } // Prevent binomial overflow
-                        points.last_mut().unwrap().color = Color::WHITE;
-                        let new_point = Point::new(mouse_position, Color::BLUE);
-                        points.push(new_point);
+                        if points.len() < 62 { // Prevent binomial overflow
+                            points.last_mut().unwrap().color = Color::WHITE;
+                            let new_point = Point::new(mouse_position, Color::BLUE);
+                            points.push(new_point);
+                        }
                     }
                     KeyboardKey::KEY_BACKSPACE => {
                         if points.len() > 2 {
@@ -90,29 +93,38 @@ fn main() {
         // Update Frame
         let mut rl_draw_handle = rl_handle.begin_drawing(&rl_thread);
         let screen_width = rl_draw_handle.get_screen_width();
+        rl_draw_handle.clear_background(Color::BLACK);
 
         #[cfg(debug_assertions)]
         rl_draw_handle.draw_fps(screen_width - 100, 10);
 
         // Draw GUI Controls
-        rl_draw_handle.gui_slider_bar(
-            Rectangle::new(30.0, 20.0, 200.0, 25.0),
-            Some(left_slider_text),
-            Some(right_slider_text),
-            &mut t,
-            0.0,
-            1.0,
-        );
         rl_draw_handle.gui_toggle(
-            Rectangle::new(30.0, 50.0, 200.0, 25.0),
-            Some(animation_toggle_text),
-            &mut animated,
+            Rectangle::new(30.0, 20.0, 200.0, 25.0),
+            Some(debug_text),
+            &mut debug_draw,
         );
+        if debug_draw {
+            rl_draw_handle.gui_slider_bar(
+                Rectangle::new(30.0, 50.0, 200.0, 25.0),
+                Some(left_slider_text),
+                Some(right_slider_text),
+                &mut t,
+                0.0,
+                1.0,
+            );
+            rl_draw_handle.gui_toggle(
+                Rectangle::new(30.0, 80.0, 200.0, 25.0),
+                Some(animation_toggle_text),
+                &mut animated,
+            );
+        }
 
-        println!("{}", points.len());
-        draw_bezier(&points, &mut rl_draw_handle, Some(t));
-
-        rl_draw_handle.clear_background(Color::BLACK);
+        draw_bezier(
+            &points,
+            &mut rl_draw_handle,
+            if debug_draw { Some(t) } else { None },
+        );
 
         // Update Animation
         if animated {
@@ -138,8 +150,9 @@ pub fn binomial(n: u64, k: u64) -> u64 {
     }
     if k > n {
         0
-    } else if k == 0{ 1 }
-    else {
+    } else if k == 0 {
+        1
+    } else {
         n * binomial(n - 1, n - k) / k
     }
 }
@@ -231,7 +244,7 @@ fn draw_bezier(points: &[Point], d: &mut RaylibDrawHandle, t: Option<f32>) {
             }
             // Draw lerp points for this run
             for p in next_points.iter() {
-                d.draw_rectangle_v(*p - rec_size*0.5, rec_size, Color::GREEN);
+                d.draw_rectangle_v(*p - rec_size * 0.5, rec_size, Color::GREEN);
             }
             debug_points = next_points;
         }
