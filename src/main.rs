@@ -1,5 +1,6 @@
 use raylib::prelude::*;
 use std::ffi::CStr;
+use std::time::SystemTime;
 
 const T_ANIMATION_SPEED: f32 = 0.005;
 fn main() {
@@ -33,12 +34,14 @@ fn main() {
     let mut animation_bounce = false;
     let mut has_point_selected = false;
     let mut debug_draw = true;
+    let mut clock_divider = 0;
 
     let mut t = 0.5;
     let left_slider_text = CStr::from_bytes_with_nul(b"0.0\0").unwrap();
     let right_slider_text = CStr::from_bytes_with_nul(b"1.0\0").unwrap();
     let animation_toggle_text = CStr::from_bytes_with_nul(b"Animate T value\0").unwrap();
     let debug_text = CStr::from_bytes_with_nul(b"Activate debug draw\0").unwrap();
+    let mut current_draw_time_text = String::new();
 
     while !rl_handle.window_should_close() {
         // Update inputs
@@ -73,7 +76,8 @@ fn main() {
             if !has_point_selected {
                 match key {
                     KeyboardKey::KEY_SPACE => {
-                        if points.len() < 62 { // Prevent binomial overflow
+                        if points.len() < 62 {
+                            // Prevent binomial overflow
                             points.last_mut().unwrap().color = Color::WHITE;
                             let new_point = Point::new(mouse_position, Color::BLUE);
                             points.push(new_point);
@@ -95,8 +99,14 @@ fn main() {
         let screen_width = rl_draw_handle.get_screen_width();
         rl_draw_handle.clear_background(Color::BLACK);
 
-        #[cfg(debug_assertions)]
-        rl_draw_handle.draw_fps(screen_width - 100, 10);
+        let current_fps_text = format!("{} FPS", rl_draw_handle.get_fps());
+        rl_draw_handle.draw_text(
+            current_fps_text.as_str(),
+            screen_width - rl_draw_handle.measure_text(current_fps_text.as_str(), 14) - 30,
+            20,
+            14,
+            Color::GREEN,
+        );
 
         // Draw GUI Controls
         rl_draw_handle.gui_toggle(
@@ -120,10 +130,21 @@ fn main() {
             );
         }
 
+        let draw_time_start = SystemTime::now();
         draw_bezier(
             &points,
             &mut rl_draw_handle,
             if debug_draw { Some(t) } else { None },
+        );
+        if clock_divider == 0 {
+            current_draw_time_text = format!("{:?}", draw_time_start.elapsed().unwrap());
+        }
+        rl_draw_handle.draw_text(
+            current_draw_time_text.as_str(),
+            screen_width - rl_draw_handle.measure_text(current_draw_time_text.as_str(), 14) - 30,
+            50,
+            14,
+            Color::WHITE,
         );
 
         // Update Animation
@@ -140,6 +161,11 @@ fn main() {
                 t = 0.0;
                 animation_bounce = false;
             }
+        }
+
+        clock_divider += 1;
+        if clock_divider >= 60 {
+            clock_divider = 0;
         }
     }
 }
