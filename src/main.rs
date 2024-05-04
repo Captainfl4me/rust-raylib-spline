@@ -71,6 +71,7 @@ fn main() {
             if !has_point_selected {
                 match key {
                     KeyboardKey::KEY_SPACE => {
+                        if points.len() >= 62 { break; } // Prevent binomial overflow
                         points.last_mut().unwrap().color = Color::WHITE;
                         let new_point = Point::new(mouse_position, Color::BLUE);
                         points.push(new_point);
@@ -108,6 +109,7 @@ fn main() {
             &mut animated,
         );
 
+        println!("{}", points.len());
         draw_bezier(&points, &mut rl_draw_handle, Some(t));
 
         rl_draw_handle.clear_background(Color::BLACK);
@@ -130,16 +132,16 @@ fn main() {
     }
 }
 
-fn binomial(n: u64, k: u64) -> u64 {
-    if n > 67 {
-        panic!("n is too large");
+pub fn binomial(n: u64, k: u64) -> u64 {
+    if n >= 63 {
+        panic!("N is too great, will overflow!");
     }
-    let mut result = 1;
-    for i in 0..k {
-        result *= n - i;
-        result /= i + 1;
+    if k > n {
+        0
+    } else if k == 0{ 1 }
+    else {
+        n * binomial(n - 1, n - k) / k
     }
-    result
 }
 
 const POINTS_RADIUS: f32 = 10.0;
@@ -216,6 +218,7 @@ fn draw_bezier(points: &[Point], d: &mut RaylibDrawHandle, t: Option<f32>) {
 
     let mut final_point = None;
     if let Some(t) = t {
+        let rec_size = Vector2::new(POINTS_RADIUS, POINTS_RADIUS);
         let mut debug_points: Vec<Vector2> = points.iter().map(|p| p.position).collect::<Vec<_>>();
         while debug_points.len() > 2 {
             let next_points = debug_points
@@ -228,7 +231,7 @@ fn draw_bezier(points: &[Point], d: &mut RaylibDrawHandle, t: Option<f32>) {
             }
             // Draw lerp points for this run
             for p in next_points.iter() {
-                d.draw_circle_v(p, POINTS_RADIUS / 2.0, Color::GREEN);
+                d.draw_rectangle_v(*p - rec_size*0.5, rec_size, Color::GREEN);
             }
             debug_points = next_points;
         }
@@ -241,7 +244,7 @@ fn draw_bezier(points: &[Point], d: &mut RaylibDrawHandle, t: Option<f32>) {
         .collect::<Vec<_>>();
 
     for line_points in step_points.windows(2) {
-        d.draw_line_ex(line_points[0], line_points[1], 4.0, Color::GREEN);
+        d.draw_line_ex(line_points[0], line_points[1], 3.0, Color::GREEN);
     }
 
     if let Some(final_point) = final_point {
