@@ -245,31 +245,31 @@ fn bezier_curve_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
 
 fn bezier_spline_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
     // Initialize
-    let mut points: Vec<Rc<RefCell<Box<dyn MovableGuiPoint>>>> = vec![
-        Rc::new(RefCell::new(Box::new(JoinPoint::new(Vector2::new(
-            300.0, 600.0,
-        ))))),
-        Rc::new(RefCell::new(Box::new(ControlPoint::new(
-            Vector2::new(600.0, 300.0),
-            None,
-            None,
-        )))),
-        Rc::new(RefCell::new(Box::new(ControlPoint::new(
-            Vector2::new(900.0, 300.0),
-            None,
-            None,
-        )))),
-        Rc::new(RefCell::new(Box::new(JoinPoint::new(Vector2::new(
-            1200.0, 600.0,
-        ))))),
-    ];
-    let linked_join_point_ref = &points[0];
-    points[1].borrow_mut().set_contraint(
-        ControlPointConstraintID::MirrorJoinPoint as usize,
-        linked_join_point_ref,
+    let mut points: Vec<Rc<RefCell<Box<dyn MovableGuiPoint>>>> = vec![Rc::new(RefCell::new(
+        Box::new(JoinPoint::new(Vector2::new(300.0, 600.0), None, None)),
+    ))];
+    points.push(Rc::new(RefCell::new(Box::new(ControlPoint::new(
+        Vector2::new(600.0, 300.0),
+        None,
+        Some(&points[0]),
+    )))));
+    points.push(Rc::new(RefCell::new(Box::new(ControlPoint::new(
+        Vector2::new(900.0, 300.0),
+        None,
+        None,
+    )))));
+    points.push(Rc::new(RefCell::new(Box::new(JoinPoint::new(
+        Vector2::new(1200.0, 600.0),
+        Some(&points[2]),
+        None,
+    )))));
+    let linked_control_point_ref = &points[1];
+    points[0].borrow_mut().set_constraint(
+        JoinPointConstraintID::NextControlPoint as usize,
+        linked_control_point_ref,
     );
     let linked_join_point_ref = &points[3];
-    points[2].borrow_mut().set_contraint(
+    points[2].borrow_mut().set_constraint(
         ControlPointConstraintID::MirrorJoinPoint as usize,
         linked_join_point_ref,
     );
@@ -334,6 +334,16 @@ fn bezier_spline_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
                             Some(&points[points.len() - 1]),
                         )));
                         points.push(Rc::new(new_point));
+                        // Update next control point ref on previous join
+                        points[points.len() - 2].borrow_mut().set_constraint(
+                            JoinPointConstraintID::NextControlPoint as usize,
+                            &points[points.len() - 1],
+                        );
+                        points[points.len() - 3].borrow_mut().set_constraint(
+                            ControlPointConstraintID::LinkedControlPoint as usize,
+                            &points[points.len() - 1],
+                        );
+
                         // Second control point between new point and last (n) control
                         points.push(Rc::new(RefCell::new(Box::new(ControlPoint::new(
                             (mouse_position + pm1_pos) * 0.5,
@@ -342,16 +352,13 @@ fn bezier_spline_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
                         )))));
                         points.push(Rc::new(RefCell::new(Box::new(JoinPoint::new(
                             mouse_position,
+                            Some(&points[points.len() - 1]),
+                            None,
                         )))));
                         let linked_join_point_ref = &points[points.len() - 1];
-                        points[points.len() - 2].borrow_mut().set_contraint(
+                        points[points.len() - 2].borrow_mut().set_constraint(
                             ControlPointConstraintID::MirrorJoinPoint as usize,
                             linked_join_point_ref,
-                        );
-                        let linked_control_point_ref = &points[points.len() - 3];
-                        points[points.len() - 5].borrow_mut().set_contraint(
-                            ControlPointConstraintID::LinkedControlPoint as usize,
-                            linked_control_point_ref,
                         );
                     }
                     KeyboardKey::KEY_BACKSPACE => {

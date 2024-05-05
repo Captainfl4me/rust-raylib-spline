@@ -1,6 +1,6 @@
+use ::core::cell::RefCell;
 use raylib::prelude::*;
 use std::rc::Rc;
-use ::core::cell::RefCell;
 
 pub fn binomial(n: u64, k: u64) -> u64 {
     if n >= 63 {
@@ -71,20 +71,29 @@ impl PointGui for BasicPoint {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone)]
 pub struct JoinPoint {
     position: Vector2,
     radius: f32,
     is_selected: bool,
     is_hovered: bool,
+
+    previous_control_point: Option<Rc<RefCell<Box<dyn MovableGuiPoint>>>>,
+    next_control_point: Option<Rc<RefCell<Box<dyn MovableGuiPoint>>>>,
 }
 impl JoinPoint {
-    pub fn new(position: Vector2) -> Self {
+    pub fn new(
+        position: Vector2,
+        previous_control_point: Option<&Rc<RefCell<Box<dyn MovableGuiPoint>>>>,
+        next_control_point: Option<&Rc<RefCell<Box<dyn MovableGuiPoint>>>>,
+    ) -> Self {
         Self {
             position,
             radius: POINTS_RADIUS,
             is_selected: false,
             is_hovered: false,
+            previous_control_point: previous_control_point.cloned(),
+            next_control_point: next_control_point.cloned(),
         }
     }
 }
@@ -94,8 +103,24 @@ impl Point for JoinPoint {
     }
 }
 impl MovablePoint for JoinPoint {
-    fn set_position(&mut self, position: Vector2, _with_constraint: bool) {
+    fn set_position(&mut self, position: Vector2, with_constraint: bool) {
+        let movement_diff = self.position - position;
         self.position = position;
+
+        if with_constraint {
+            if let Some(previous_control_point) = &self.previous_control_point {
+                let previous_position = previous_control_point.borrow().get_position();
+                previous_control_point
+                    .borrow_mut()
+                    .set_position(previous_position - movement_diff, false);
+            }
+            if let Some(next_control_point) = &self.next_control_point {
+                let next_position = next_control_point.borrow().get_position();
+                next_control_point
+                    .borrow_mut()
+                    .set_position(next_position - movement_diff, false);
+            }
+        }
     }
 }
 impl PointGui for JoinPoint {
@@ -121,6 +146,21 @@ impl PointGui for JoinPoint {
         self.is_selected = state;
     }
 }
+pub enum JoinPointConstraintID {
+    PreviousControlPoint = 0,
+    NextControlPoint = 1,
+}
+impl TryFrom<usize> for JoinPointConstraintID {
+    type Error = ();
+
+    fn try_from(value: usize) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Self::PreviousControlPoint),
+            1 => Ok(Self::NextControlPoint),
+            _ => Err(()),
+        }
+    }
+}
 impl MovableGuiPoint for JoinPoint {
     fn downcast_basic_point(&self) -> BasicPoint {
         let mut basic_point = BasicPoint::new(self.position, self.get_color());
@@ -130,8 +170,20 @@ impl MovableGuiPoint for JoinPoint {
         basic_point
     }
 
-    fn set_contraint(&mut self, constraint_id: usize, constraint: &Rc<RefCell<Box<dyn MovableGuiPoint>>>) {
-        todo!()
+    fn set_constraint(
+        &mut self,
+        constraint_id: usize,
+        constraint: &Rc<RefCell<Box<dyn MovableGuiPoint>>>,
+    ) {
+        match constraint_id.try_into() {
+            Ok(JoinPointConstraintID::PreviousControlPoint) => {
+                self.previous_control_point = Some(constraint.clone())
+            }
+            Ok(JoinPointConstraintID::NextControlPoint) => {
+                self.next_control_point = Some(constraint.clone())
+            }
+            Err(_) => {}
+        };
     }
 }
 
@@ -146,14 +198,18 @@ pub struct ControlPoint {
     mirror_join_point: Option<Rc<RefCell<Box<dyn MovableGuiPoint>>>>,
 }
 impl ControlPoint {
-    pub fn new(position: Vector2, linked_point: Option<&Rc<RefCell<Box<dyn MovableGuiPoint>>>>, mirror_join_point: Option<&Rc<RefCell<Box<dyn MovableGuiPoint>>>>) -> Self {
+    pub fn new(
+        position: Vector2,
+        linked_point: Option<&Rc<RefCell<Box<dyn MovableGuiPoint>>>>,
+        mirror_join_point: Option<&Rc<RefCell<Box<dyn MovableGuiPoint>>>>,
+    ) -> Self {
         Self {
             position,
             radius: POINTS_RADIUS,
             is_selected: false,
             is_hovered: false,
             linked_control_point: linked_point.cloned(),
-            mirror_join_point: mirror_join_point.cloned()
+            mirror_join_point: mirror_join_point.cloned(),
         }
     }
 }
@@ -168,8 +224,15 @@ impl MovablePoint for ControlPoint {
 
         if with_constraint {
             if let Some(linked_point) = &self.linked_control_point {
-                let join_position = self.mirror_join_point.as_ref().unwrap().borrow().get_position();
-                linked_point.borrow_mut().set_position(join_position * 2.0 - position, false);
+                let join_position = self
+                    .mirror_join_point
+                    .as_ref()
+                    .unwrap()
+                    .borrow()
+                    .get_position();
+                linked_point
+                    .borrow_mut()
+                    .set_position(join_position * 2.0 - position, false);
             }
         }
     }
@@ -220,10 +283,18 @@ impl MovableGuiPoint for ControlPoint {
         basic_point.is_hovered = self.is_hovered;
         basic_point
     }
-    fn set_contraint(&mut self, constraint_id: usize, constraint: &Rc<RefCell<Box<dyn MovableGuiPoint>>>) {
+    fn set_constraint(
+        &mut self,
+        constraint_id: usize,
+        constraint: &Rc<RefCell<Box<dyn MovableGuiPoint>>>,
+    ) {
         match constraint_id.try_into() {
-            Ok(ControlPointConstraintID::LinkedControlPoint) => self.linked_control_point = Some(constraint.clone()),
-            Ok(ControlPointConstraintID::MirrorJoinPoint) => self.mirror_join_point = Some(constraint.clone()),
+            Ok(ControlPointConstraintID::LinkedControlPoint) => {
+                self.linked_control_point = Some(constraint.clone())
+            }
+            Ok(ControlPointConstraintID::MirrorJoinPoint) => {
+                self.mirror_join_point = Some(constraint.clone())
+            }
             Err(_) => {}
         };
     }
@@ -274,7 +345,11 @@ pub trait MovablePoint {
 
 pub trait MovableGuiPoint: MovablePoint + PointGui {
     fn downcast_basic_point(&self) -> BasicPoint;
-    fn set_contraint(&mut self, constraint_id: usize, constraint: &Rc<RefCell<Box<dyn MovableGuiPoint>>>);
+    fn set_constraint(
+        &mut self,
+        constraint_id: usize,
+        constraint: &Rc<RefCell<Box<dyn MovableGuiPoint>>>,
+    );
 }
 
 const SAMPLES: usize = 50;
