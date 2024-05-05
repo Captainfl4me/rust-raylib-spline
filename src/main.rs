@@ -280,6 +280,7 @@ fn bezier_spline_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
     let mut debug_draw = true;
     let mut lock_move = true;
     let mut clock_divider = 0;
+    let mut is_closed_loop = false;
 
     let mut t = 0.5;
     let left_slider_text = CStr::from_bytes_with_nul(b"0.0\0").unwrap();
@@ -325,47 +326,90 @@ fn bezier_spline_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
             if !has_point_selected {
                 match key {
                     KeyboardKey::KEY_SPACE => {
-                        let pm1_pos = points[points.len() - 1].borrow().get_position();
-                        let pm2_pos = points[points.len() - 2].borrow().get_position();
-                        // First control point is mirrored with n-1 control point
-                        let new_point = RefCell::new(Box::new(ControlPoint::new(
-                            pm1_pos * 2.0 - pm2_pos,
-                            Some(&points[points.len() - 2]),
-                            Some(&points[points.len() - 1]),
-                        )));
-                        points.push(Rc::new(new_point));
-                        // Update next control point ref on previous join
-                        points[points.len() - 2].borrow_mut().set_constraint(
-                            JoinPointConstraintID::NextControlPoint as usize,
-                            &points[points.len() - 1],
-                        );
-                        points[points.len() - 3].borrow_mut().set_constraint(
-                            ControlPointConstraintID::LinkedControlPoint as usize,
-                            &points[points.len() - 1],
-                        );
+                        if !is_closed_loop {
+                            let pm1_pos = points[points.len() - 1].borrow().get_position();
+                            let pm2_pos = points[points.len() - 2].borrow().get_position();
+                            // First control point is mirrored with n-1 control point
+                            let new_point = RefCell::new(Box::new(ControlPoint::new(
+                                pm1_pos * 2.0 - pm2_pos,
+                                Some(&points[points.len() - 2]),
+                                Some(&points[points.len() - 1]),
+                            )));
+                            points.push(Rc::new(new_point));
+                            // Update next control point ref on previous join
+                            points[points.len() - 2].borrow_mut().set_constraint(
+                                JoinPointConstraintID::NextControlPoint as usize,
+                                &points[points.len() - 1],
+                            );
+                            points[points.len() - 3].borrow_mut().set_constraint(
+                                ControlPointConstraintID::LinkedControlPoint as usize,
+                                &points[points.len() - 1],
+                            );
 
-                        // Second control point between new point and last (n) control
-                        points.push(Rc::new(RefCell::new(Box::new(ControlPoint::new(
-                            (mouse_position + pm1_pos) * 0.5,
-                            None,
-                            None,
-                        )))));
-                        points.push(Rc::new(RefCell::new(Box::new(JoinPoint::new(
-                            mouse_position,
-                            Some(&points[points.len() - 1]),
-                            None,
-                        )))));
-                        let linked_join_point_ref = &points[points.len() - 1];
-                        points[points.len() - 2].borrow_mut().set_constraint(
-                            ControlPointConstraintID::MirrorJoinPoint as usize,
-                            linked_join_point_ref,
-                        );
+                            // Second control point between new point and last (n) control
+                            points.push(Rc::new(RefCell::new(Box::new(ControlPoint::new(
+                                (mouse_position + pm1_pos) * 0.5,
+                                None,
+                                None,
+                            )))));
+                            points.push(Rc::new(RefCell::new(Box::new(JoinPoint::new(
+                                mouse_position,
+                                Some(&points[points.len() - 1]),
+                                None,
+                            )))));
+                            let linked_join_point_ref = &points[points.len() - 1];
+                            points[points.len() - 2].borrow_mut().set_constraint(
+                                ControlPointConstraintID::MirrorJoinPoint as usize,
+                                linked_join_point_ref,
+                            );
+                        }
                     }
                     KeyboardKey::KEY_BACKSPACE => {
                         if points.len() > 4 {
-                            for _ in 0..3 {
+                            for _ in 0..if is_closed_loop { 2 } else { 3 } {
                                 points.pop();
                             }
+                            is_closed_loop = false;
+                        }
+                    }
+                    KeyboardKey::KEY_ENTER => {
+                        if !is_closed_loop {
+                            let pm1_pos = points[points.len() - 1].borrow().get_position();
+                            let pm2_pos = points[points.len() - 2].borrow().get_position();
+                            // First control point is mirrored with n-1 control point
+                            let new_point = RefCell::new(Box::new(ControlPoint::new(
+                                pm1_pos * 2.0 - pm2_pos,
+                                Some(&points[points.len() - 2]),
+                                Some(&points[points.len() - 1]),
+                            )));
+                            points.push(Rc::new(new_point));
+                            // Update next control point ref on previous join
+                            points[points.len() - 2].borrow_mut().set_constraint(
+                                JoinPointConstraintID::NextControlPoint as usize,
+                                &points[points.len() - 1],
+                            );
+                            points[points.len() - 3].borrow_mut().set_constraint(
+                                ControlPointConstraintID::LinkedControlPoint as usize,
+                                &points[points.len() - 1],
+                            );
+
+                            let pm1_pos = points[0].borrow().get_position();
+                            let pm2_pos = points[1].borrow().get_position();
+                            // Second control point is mirrored with first control point (arr[1])
+                            points.push(Rc::new(RefCell::new(Box::new(ControlPoint::new(
+                                pm1_pos * 2.0 - pm2_pos,
+                                Some(&points[1]),
+                                Some(&points[0]),
+                            )))));
+                            points[0].borrow_mut().set_constraint(
+                                JoinPointConstraintID::PreviousControlPoint as usize,
+                                &points[points.len() - 1],
+                            );
+                            points[1].borrow_mut().set_constraint(
+                                ControlPointConstraintID::LinkedControlPoint as usize,
+                                &points[points.len() - 1],
+                            );
+                            is_closed_loop = true;
                         }
                     }
                     KeyboardKey::KEY_ESCAPE => {
@@ -429,6 +473,23 @@ fn bezier_spline_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
                 if debug_draw { Some(t) } else { None },
             );
         }
+        if is_closed_loop {
+            let cubic_bezier_points = [
+                &points[points.len() - 3],
+                &points[points.len() - 2],
+                &points[points.len() - 1],
+                &points[0],
+            ]
+            .iter()
+            .map(|b| b.borrow().downcast_basic_point())
+            .collect::<Vec<_>>();
+            draw_bezier(
+                &cubic_bezier_points,
+                &mut rl_draw_handle,
+                if debug_draw { Some(t) } else { None },
+            );
+        }
+
         if clock_divider == 0 {
             current_draw_time_text = format!("{:?}", draw_time_start.elapsed().unwrap());
         }
