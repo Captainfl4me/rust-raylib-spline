@@ -12,6 +12,7 @@ At first, I try setting up a version with the [Bevy game engine](https://github.
 
 Well, if you have read until here, I will assume that you are kind of interesting in that project. Here is a quick list of the features and key binding:
 
+- While inside a scene use `ESC` to go back to the menu.
 - Bézier curve (from 2 to 62 control points)
     - Use `SPACE` to add a new control point at the mouse position.
     - Use `BACKSPACE` to remove the last control point.
