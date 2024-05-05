@@ -1,5 +1,7 @@
+use ::core::cell::RefCell;
 use raylib::prelude::*;
 use std::ffi::CStr;
+use std::rc::Rc;
 use std::time::SystemTime;
 
 mod bezier;
@@ -92,7 +94,7 @@ fn bezier_curve_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
         } else {
             Color::WHITE
         };
-        Point::new(*pos, color)
+        BasicPoint::new(*pos, color)
     })
     .collect::<Vec<_>>();
     let mut animated = true;
@@ -118,7 +120,10 @@ fn bezier_curve_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
         // Scene computation
         // Update points
         for point in points.iter_mut() {
-            point.udpate(mouse_position);
+            point.udpate_gui(mouse_position);
+            if point.is_selected {
+                point.set_position(mouse_position, false);
+            }
         }
         if rl_handle.is_mouse_button_down(MouseButton::MOUSE_BUTTON_LEFT) {
             if !has_point_selected {
@@ -144,7 +149,7 @@ fn bezier_curve_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
                         if points.len() < 62 {
                             // Prevent binomial overflow
                             points.last_mut().unwrap().color = Color::WHITE;
-                            let new_point = Point::new(mouse_position, Color::BLUE);
+                            let new_point = BasicPoint::new(mouse_position, Color::BLUE);
                             points.push(new_point);
                         }
                     }
@@ -240,27 +245,40 @@ fn bezier_curve_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
 
 fn bezier_spline_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
     // Initialize
-    let mut points = [
-        Vector2::new(300.0, 600.0),
-        Vector2::new(600.0, 300.0),
-        Vector2::new(900.0, 300.0),
-        Vector2::new(1200.0, 600.0),
-    ]
-    .iter()
-    .enumerate()
-    .map(|(i, pos)| {
-        let color = if i == 0 || i == 4 - 1 {
-            Color::BLUE
-        } else {
-            Color::WHITE
-        };
-        Point::new(*pos, color)
-    })
-    .collect::<Vec<_>>();
+    let mut points: Vec<Rc<RefCell<Box<dyn MovableGuiPoint>>>> = vec![
+        Rc::new(RefCell::new(Box::new(JoinPoint::new(Vector2::new(
+            300.0, 600.0,
+        ))))),
+        Rc::new(RefCell::new(Box::new(ControlPoint::new(
+            Vector2::new(600.0, 300.0),
+            None,
+            None,
+        )))),
+        Rc::new(RefCell::new(Box::new(ControlPoint::new(
+            Vector2::new(900.0, 300.0),
+            None,
+            None,
+        )))),
+        Rc::new(RefCell::new(Box::new(JoinPoint::new(Vector2::new(
+            1200.0, 600.0,
+        ))))),
+    ];
+    let linked_join_point_ref = &points[0];
+    points[1].borrow_mut().set_contraint(
+        ControlPointConstraintID::MirrorJoinPoint as usize,
+        linked_join_point_ref,
+    );
+    let linked_join_point_ref = &points[3];
+    points[2].borrow_mut().set_contraint(
+        ControlPointConstraintID::MirrorJoinPoint as usize,
+        linked_join_point_ref,
+    );
+
     let mut animated = true;
     let mut animation_bounce = false;
     let mut has_point_selected = false;
     let mut debug_draw = true;
+    let mut lock_move = true;
     let mut clock_divider = 0;
 
     let mut t = 0.5;
@@ -268,6 +286,7 @@ fn bezier_spline_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
     let right_slider_text = CStr::from_bytes_with_nul(b"1.0\0").unwrap();
     let animation_toggle_text = CStr::from_bytes_with_nul(b"Animate T value\0").unwrap();
     let debug_text = CStr::from_bytes_with_nul(b"Activate debug draw\0").unwrap();
+    let lock_move_text = CStr::from_bytes_with_nul(b"Lock points movement\0").unwrap();
     let mut current_draw_time_text = String::new();
 
     while !rl_handle.window_should_close() {
@@ -280,13 +299,16 @@ fn bezier_spline_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
         // Scene computation
         // Update points
         for point in points.iter_mut() {
-            point.udpate(mouse_position);
+            point.borrow_mut().udpate_gui(mouse_position);
+            if point.borrow().is_selected() {
+                point.borrow_mut().set_position(mouse_position, lock_move);
+            }
         }
         if rl_handle.is_mouse_button_down(MouseButton::MOUSE_BUTTON_LEFT) {
             if !has_point_selected {
                 for point in points.iter_mut() {
-                    if point.is_hovered {
-                        point.is_selected = true;
+                    if point.borrow().is_hovered() {
+                        point.borrow_mut().set_selected(true);
                         has_point_selected = true;
                         break;
                     }
@@ -294,7 +316,7 @@ fn bezier_spline_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
             }
         } else if has_point_selected {
             for point in points.iter_mut() {
-                point.is_selected = false;
+                point.borrow_mut().set_selected(false);
             }
             has_point_selected = false;
         }
@@ -303,18 +325,34 @@ fn bezier_spline_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
             if !has_point_selected {
                 match key {
                     KeyboardKey::KEY_SPACE => {
+                        let pm1_pos = points[points.len() - 1].borrow().get_position();
+                        let pm2_pos = points[points.len() - 2].borrow().get_position();
                         // First control point is mirrored with n-1 control point
-                        points.push(Point::new(
-                            points[points.len() - 1].position * 2.0
-                                - points[points.len() - 2].position,
-                            Color::WHITE,
-                        ));
+                        let new_point = RefCell::new(Box::new(ControlPoint::new(
+                            pm1_pos * 2.0 - pm2_pos,
+                            Some(&points[points.len() - 2]),
+                            Some(&points[points.len() - 1]),
+                        )));
+                        points.push(Rc::new(new_point));
                         // Second control point between new point and last (n) control
-                        points.push(Point::new(
-                            (mouse_position + points[points.len() - 2].position) * 0.5,
-                            Color::WHITE,
-                        ));
-                        points.push(Point::new(mouse_position, Color::BLUE));
+                        points.push(Rc::new(RefCell::new(Box::new(ControlPoint::new(
+                            (mouse_position + pm1_pos) * 0.5,
+                            None,
+                            None,
+                        )))));
+                        points.push(Rc::new(RefCell::new(Box::new(JoinPoint::new(
+                            mouse_position,
+                        )))));
+                        let linked_join_point_ref = &points[points.len() - 1];
+                        points[points.len() - 2].borrow_mut().set_contraint(
+                            ControlPointConstraintID::MirrorJoinPoint as usize,
+                            linked_join_point_ref,
+                        );
+                        let linked_control_point_ref = &points[points.len() - 3];
+                        points[points.len() - 5].borrow_mut().set_contraint(
+                            ControlPointConstraintID::LinkedControlPoint as usize,
+                            linked_control_point_ref,
+                        );
                     }
                     KeyboardKey::KEY_BACKSPACE => {
                         if points.len() > 4 {
@@ -366,11 +404,20 @@ fn bezier_spline_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
                 &mut animated,
             );
         }
+        rl_draw_handle.gui_toggle(
+            Rectangle::new(30.0, if debug_draw { 110.0 } else { 50.0 }, 200.0, 25.0),
+            Some(lock_move_text),
+            &mut lock_move,
+        );
 
         let draw_time_start = SystemTime::now();
         for cubic_bezier_points in points.windows(4).step_by(3) {
+            let cubic_bezier_points = cubic_bezier_points
+                .iter()
+                .map(|b| b.borrow().downcast_basic_point())
+                .collect::<Vec<_>>();
             draw_bezier(
-                cubic_bezier_points,
+                &cubic_bezier_points,
                 &mut rl_draw_handle,
                 if debug_draw { Some(t) } else { None },
             );

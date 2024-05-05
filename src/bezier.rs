@@ -1,4 +1,6 @@
 use raylib::prelude::*;
+use std::rc::Rc;
+use ::core::cell::RefCell;
 
 pub fn binomial(n: u64, k: u64) -> u64 {
     if n >= 63 {
@@ -17,14 +19,14 @@ const POINTS_RADIUS: f32 = 10.0;
 const POINTS_RADIUS_HOVER: f32 = 15.0;
 const ANIMATION_SPEED: f32 = 1.0;
 #[derive(Debug, Clone, Copy)]
-pub struct Point {
+pub struct BasicPoint {
     pub position: Vector2,
     pub radius: f32,
     pub color: Color,
     pub is_selected: bool,
     pub is_hovered: bool,
 }
-impl Point {
+impl BasicPoint {
     pub fn new(position: Vector2, color: Color) -> Self {
         Self {
             position,
@@ -34,52 +36,270 @@ impl Point {
             is_hovered: false,
         }
     }
+}
+impl Point for BasicPoint {
+    fn get_position(&self) -> Vector2 {
+        self.position
+    }
+}
+impl MovablePoint for BasicPoint {
+    fn set_position(&mut self, position: Vector2, _with_constraint: bool) {
+        self.position = position;
+    }
+}
+impl PointGui for BasicPoint {
+    fn get_radius(&self) -> f32 {
+        self.radius
+    }
+    fn set_radius(&mut self, radius: f32) {
+        self.radius = radius;
+    }
+    fn get_color(&self) -> Color {
+        self.color
+    }
+    fn is_hovered(&self) -> bool {
+        self.is_hovered
+    }
+    fn set_hover_state(&mut self, state: bool) {
+        self.is_hovered = state;
+    }
+    fn is_selected(&self) -> bool {
+        self.is_selected
+    }
+    fn set_selected(&mut self, state: bool) {
+        self.is_selected = state;
+    }
+}
 
-    pub fn udpate(&mut self, mouse_position: Vector2) {
-        self.is_hovered =
-            mouse_position.distance_to(self.position) < self.radius || self.is_selected;
-        if self.is_hovered {
-            if self.radius < POINTS_RADIUS_HOVER {
-                self.radius += ANIMATION_SPEED;
-            } else if self.radius > POINTS_RADIUS_HOVER {
-                self.radius = POINTS_RADIUS_HOVER;
+#[derive(Debug, Clone, Copy)]
+pub struct JoinPoint {
+    position: Vector2,
+    radius: f32,
+    is_selected: bool,
+    is_hovered: bool,
+}
+impl JoinPoint {
+    pub fn new(position: Vector2) -> Self {
+        Self {
+            position,
+            radius: POINTS_RADIUS,
+            is_selected: false,
+            is_hovered: false,
+        }
+    }
+}
+impl Point for JoinPoint {
+    fn get_position(&self) -> Vector2 {
+        self.position
+    }
+}
+impl MovablePoint for JoinPoint {
+    fn set_position(&mut self, position: Vector2, _with_constraint: bool) {
+        self.position = position;
+    }
+}
+impl PointGui for JoinPoint {
+    fn get_radius(&self) -> f32 {
+        self.radius
+    }
+    fn set_radius(&mut self, radius: f32) {
+        self.radius = radius;
+    }
+    fn get_color(&self) -> Color {
+        Color::BLUE
+    }
+    fn is_hovered(&self) -> bool {
+        self.is_hovered
+    }
+    fn set_hover_state(&mut self, state: bool) {
+        self.is_hovered = state;
+    }
+    fn is_selected(&self) -> bool {
+        self.is_selected
+    }
+    fn set_selected(&mut self, state: bool) {
+        self.is_selected = state;
+    }
+}
+impl MovableGuiPoint for JoinPoint {
+    fn downcast_basic_point(&self) -> BasicPoint {
+        let mut basic_point = BasicPoint::new(self.position, self.get_color());
+        basic_point.radius = self.radius;
+        basic_point.is_selected = self.is_selected;
+        basic_point.is_hovered = self.is_hovered;
+        basic_point
+    }
+
+    fn set_contraint(&mut self, constraint_id: usize, constraint: &Rc<RefCell<Box<dyn MovableGuiPoint>>>) {
+        todo!()
+    }
+}
+
+#[derive(Clone)]
+pub struct ControlPoint {
+    position: Vector2,
+    radius: f32,
+    is_selected: bool,
+    is_hovered: bool,
+
+    linked_control_point: Option<Rc<RefCell<Box<dyn MovableGuiPoint>>>>,
+    mirror_join_point: Option<Rc<RefCell<Box<dyn MovableGuiPoint>>>>,
+}
+impl ControlPoint {
+    pub fn new(position: Vector2, linked_point: Option<&Rc<RefCell<Box<dyn MovableGuiPoint>>>>, mirror_join_point: Option<&Rc<RefCell<Box<dyn MovableGuiPoint>>>>) -> Self {
+        Self {
+            position,
+            radius: POINTS_RADIUS,
+            is_selected: false,
+            is_hovered: false,
+            linked_control_point: linked_point.cloned(),
+            mirror_join_point: mirror_join_point.cloned()
+        }
+    }
+}
+impl Point for ControlPoint {
+    fn get_position(&self) -> Vector2 {
+        self.position
+    }
+}
+impl MovablePoint for ControlPoint {
+    fn set_position(&mut self, position: Vector2, with_constraint: bool) {
+        self.position = position;
+
+        if with_constraint {
+            if let Some(linked_point) = &self.linked_control_point {
+                let join_position = self.mirror_join_point.as_ref().unwrap().borrow().get_position();
+                linked_point.borrow_mut().set_position(join_position * 2.0 - position, false);
             }
-        } else if self.radius > POINTS_RADIUS {
-            self.radius -= ANIMATION_SPEED;
-        } else if self.radius < POINTS_RADIUS {
-            self.radius = POINTS_RADIUS;
         }
+    }
+}
+impl PointGui for ControlPoint {
+    fn get_radius(&self) -> f32 {
+        self.radius
+    }
+    fn set_radius(&mut self, radius: f32) {
+        self.radius = radius;
+    }
+    fn get_color(&self) -> Color {
+        Color::WHITE
+    }
+    fn is_hovered(&self) -> bool {
+        self.is_hovered
+    }
+    fn set_hover_state(&mut self, state: bool) {
+        self.is_hovered = state;
+    }
+    fn is_selected(&self) -> bool {
+        self.is_selected
+    }
+    fn set_selected(&mut self, state: bool) {
+        self.is_selected = state;
+    }
+}
+pub enum ControlPointConstraintID {
+    LinkedControlPoint = 0,
+    MirrorJoinPoint = 1,
+}
+impl TryFrom<usize> for ControlPointConstraintID {
+    type Error = ();
 
-        if self.is_selected {
-            self.position = mouse_position;
+    fn try_from(value: usize) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Self::LinkedControlPoint),
+            1 => Ok(Self::MirrorJoinPoint),
+            _ => Err(()),
+        }
+    }
+}
+impl MovableGuiPoint for ControlPoint {
+    fn downcast_basic_point(&self) -> BasicPoint {
+        let mut basic_point = BasicPoint::new(self.position, self.get_color());
+        basic_point.radius = self.radius;
+        basic_point.is_selected = self.is_selected;
+        basic_point.is_hovered = self.is_hovered;
+        basic_point
+    }
+    fn set_contraint(&mut self, constraint_id: usize, constraint: &Rc<RefCell<Box<dyn MovableGuiPoint>>>) {
+        match constraint_id.try_into() {
+            Ok(ControlPointConstraintID::LinkedControlPoint) => self.linked_control_point = Some(constraint.clone()),
+            Ok(ControlPointConstraintID::MirrorJoinPoint) => self.mirror_join_point = Some(constraint.clone()),
+            Err(_) => {}
+        };
+    }
+}
+
+pub trait Point {
+    fn get_position(&self) -> Vector2;
+}
+
+pub trait PointGui: Point {
+    fn get_radius(&self) -> f32;
+    fn set_radius(&mut self, radius: f32);
+    fn get_color(&self) -> Color;
+
+    fn is_hovered(&self) -> bool;
+    fn set_hover_state(&mut self, state: bool);
+    fn is_selected(&self) -> bool;
+    fn set_selected(&mut self, state: bool);
+
+    /// Update the point (default implementation)
+    fn udpate_gui(&mut self, mouse_position: Vector2) {
+        self.set_hover_state(
+            mouse_position.distance_to(self.get_position()) < self.get_radius()
+                || self.is_selected(),
+        );
+        if self.is_hovered() {
+            if self.get_radius() < POINTS_RADIUS_HOVER {
+                self.set_radius(self.get_radius() + ANIMATION_SPEED);
+            } else if self.get_radius() > POINTS_RADIUS_HOVER {
+                self.set_radius(POINTS_RADIUS_HOVER);
+            }
+        } else if self.get_radius() > POINTS_RADIUS {
+            self.set_radius(self.get_radius() - ANIMATION_SPEED);
+        } else if self.get_radius() < POINTS_RADIUS {
+            self.set_radius(POINTS_RADIUS);
         }
     }
 
-    pub fn draw(&self, d: &mut RaylibDrawHandle) {
-        d.draw_circle_v(self.position, self.radius, self.color);
+    /// Draw the point (default implementation)
+    fn draw(&self, d: &mut RaylibDrawHandle) {
+        d.draw_circle_v(self.get_position(), self.get_radius(), self.get_color());
     }
+}
+
+pub trait MovablePoint {
+    fn set_position(&mut self, position: Vector2, with_constraint: bool);
+}
+
+pub trait MovableGuiPoint: MovablePoint + PointGui {
+    fn downcast_basic_point(&self) -> BasicPoint;
+    fn set_contraint(&mut self, constraint_id: usize, constraint: &Rc<RefCell<Box<dyn MovableGuiPoint>>>);
 }
 
 const SAMPLES: usize = 50;
 
 /// Evaluate a point on the curve
-pub fn evalute_bezier_curve(points: &[Point], t: f32) -> Vector2 {
+pub fn evalute_bezier_curve(points: &[impl Point], t: f32) -> Vector2 {
     let n = points.len() - 1;
     let tuple_point = points.iter().enumerate().fold((0.0, 0.0), |acc, (i, e)| {
         let a = (binomial(n as u64, i as u64) as f32)
             * (1.0 - t).powi((n - i) as i32)
             * t.powi(i as i32);
-        (acc.0 + e.position.x * a, acc.1 + e.position.y * a)
+        (
+            acc.0 + e.get_position().x * a,
+            acc.1 + e.get_position().y * a,
+        )
     });
     Vector2::new(tuple_point.0, tuple_point.1)
 }
 
 /// Draw the curve
-pub fn draw_bezier(points: &[Point], d: &mut RaylibDrawHandle, t: Option<f32>) {
+pub fn draw_bezier(points: &[impl PointGui], d: &mut RaylibDrawHandle, t: Option<f32>) {
     for line_points in points.windows(2) {
         d.draw_line_ex(
-            line_points[0].position,
-            line_points[1].position,
+            line_points[0].get_position(),
+            line_points[1].get_position(),
             3.0,
             Color::RED,
         );
@@ -88,7 +308,8 @@ pub fn draw_bezier(points: &[Point], d: &mut RaylibDrawHandle, t: Option<f32>) {
     let mut final_point = None;
     if let Some(t) = t {
         let rec_size = Vector2::new(POINTS_RADIUS, POINTS_RADIUS);
-        let mut debug_points: Vec<Vector2> = points.iter().map(|p| p.position).collect::<Vec<_>>();
+        let mut debug_points: Vec<Vector2> =
+            points.iter().map(|p| p.get_position()).collect::<Vec<_>>();
         while debug_points.len() > 2 {
             let next_points = debug_points
                 .windows(2)
