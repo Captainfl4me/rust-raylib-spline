@@ -2,6 +2,8 @@ use ::core::cell::RefCell;
 use raylib::prelude::*;
 use std::rc::Rc;
 
+use crate::colors::*;
+
 pub fn binomial(n: u64, k: u64) -> u64 {
     if n >= 63 {
         panic!("N is too great, will overflow!");
@@ -131,7 +133,7 @@ impl PointGui for JoinPoint {
         self.radius = radius;
     }
     fn get_color(&self) -> Color {
-        Color::BLUE
+        COLOR_BLUE
     }
     fn is_hovered(&self) -> bool {
         self.is_hovered
@@ -245,7 +247,7 @@ impl PointGui for ControlPoint {
         self.radius = radius;
     }
     fn get_color(&self) -> Color {
-        Color::WHITE
+        COLOR_LIGHT
     }
     fn is_hovered(&self) -> bool {
         self.is_hovered
@@ -376,7 +378,7 @@ pub fn draw_bezier(points: &[impl PointGui], d: &mut RaylibDrawHandle, t: Option
             line_points[0].get_position(),
             line_points[1].get_position(),
             3.0,
-            Color::RED,
+            COLOR_RED,
         );
     }
 
@@ -392,11 +394,11 @@ pub fn draw_bezier(points: &[impl PointGui], d: &mut RaylibDrawHandle, t: Option
                 .collect::<Vec<_>>();
             // Drawing lines before points so that points will override them
             for p in next_points.windows(2) {
-                d.draw_line_ex(p[0], p[1], 2.0, Color::RED);
+                d.draw_line_ex(p[0], p[1], 2.0, COLOR_RED);
             }
             // Draw lerp points for this run
             for p in next_points.iter() {
-                d.draw_rectangle_v(*p - rec_size * 0.5, rec_size, Color::GREEN);
+                d.draw_rectangle_v(*p - rec_size * 0.5, rec_size, COLOR_GREEN);
             }
             debug_points = next_points;
         }
@@ -409,11 +411,11 @@ pub fn draw_bezier(points: &[impl PointGui], d: &mut RaylibDrawHandle, t: Option
         .collect::<Vec<_>>();
 
     for line_points in step_points.windows(2) {
-        d.draw_line_ex(line_points[0], line_points[1], 3.0, Color::GREEN);
+        d.draw_line_ex(line_points[0], line_points[1], 3.0, COLOR_GREEN);
     }
 
     if let Some(final_point) = final_point {
-        d.draw_circle_v(final_point, POINTS_RADIUS / 2.0, Color::YELLOW);
+        d.draw_circle_v(final_point, POINTS_RADIUS / 2.0, COLOR_YELLOW);
     }
 
     for point in points.iter() {

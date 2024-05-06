@@ -1,4 +1,5 @@
 use ::core::cell::RefCell;
+use raylib::core::texture::Image;
 use raylib::prelude::*;
 use std::ffi::CStr;
 use std::rc::Rc;
@@ -6,6 +7,9 @@ use std::time::SystemTime;
 
 mod bezier;
 use bezier::*;
+
+mod colors;
+use colors::*;
 
 enum Scenes {
     BezierCurve,
@@ -22,6 +26,13 @@ fn main() {
     rl_handle.set_exit_key(None);
     rl_handle.set_window_state(rl_handle.get_window_state().set_window_maximized(true));
 
+    let image_bytes = include_bytes!("../assets/background_tile.png");
+    let mut background_tile_image = Image::load_image_from_mem(".png", image_bytes).unwrap();
+    background_tile_image.resize(256, 256);
+    let background_tile_texture = rl_handle
+        .load_texture_from_image(&rl_thread, &background_tile_image)
+        .unwrap();
+
     const TITLE_FONT_SIZE: i32 = 60;
     let mut scene_to_load = None;
     while !rl_handle.window_should_close() {
@@ -29,14 +40,14 @@ fn main() {
             let mut rl_draw_handle = rl_handle.begin_drawing(&rl_thread);
             let screen_width = rl_draw_handle.get_screen_width();
             let screen_height = rl_draw_handle.get_screen_height();
-            draw_background(&mut rl_draw_handle);
+            draw_background(&mut rl_draw_handle, &background_tile_texture);
 
             rl_draw_handle.draw_text(
                 "Spline Drawer",
                 (screen_width - rl_draw_handle.measure_text("Spline Drawer", TITLE_FONT_SIZE)) / 2,
                 (screen_height - TITLE_FONT_SIZE) / 2,
                 TITLE_FONT_SIZE,
-                Color::WHITE,
+                COLOR_LIGHT,
             );
 
             if rl_draw_handle.gui_button(
@@ -65,20 +76,47 @@ fn main() {
         }
 
         match scene_to_load {
-            Some(Scenes::BezierCurve) => bezier_curve_scene(&mut rl_handle, &rl_thread),
-            Some(Scenes::BezierSpline) => bezier_spline_scene(&mut rl_handle, &rl_thread),
+            Some(Scenes::BezierCurve) => {
+                bezier_curve_scene(&mut rl_handle, &rl_thread, &background_tile_texture)
+            }
+            Some(Scenes::BezierSpline) => {
+                bezier_spline_scene(&mut rl_handle, &rl_thread, &background_tile_texture)
+            }
             None => {}
         }
         scene_to_load = None;
     }
 }
 
-fn draw_background(rl_draw_handle: &mut RaylibDrawHandle) {
-    rl_draw_handle.clear_background(Color::BLACK);
+fn draw_background(rl_draw_handle: &mut RaylibDrawHandle, tile_texture: &Texture2D) {
+    rl_draw_handle.clear_background(COLOR_DARK);
+    let screen_width = rl_draw_handle.get_screen_width();
+    let screen_height = rl_draw_handle.get_screen_height();
+    for i in 0..=screen_width / tile_texture.width() {
+        for j in 0..=screen_height / tile_texture.height() {
+            rl_draw_handle.draw_texture(
+                tile_texture,
+                i * tile_texture.width(),
+                j * tile_texture.height(),
+                COLOR_LIGHT,
+            );
+        }
+    }
+    rl_draw_handle.draw_text(
+        "CREDITS: Captainfl4me",
+        screen_width - rl_draw_handle.measure_text("CREDITS: Captainfl4me", 32) - 20,
+        screen_height - 40,
+        32,
+        COLOR_BLACK,
+    );
 }
 
 const T_ANIMATION_SPEED: f32 = 0.005;
-fn bezier_curve_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
+fn bezier_curve_scene(
+    rl_handle: &mut RaylibHandle,
+    rl_thread: &RaylibThread,
+    tile_texture: &Texture2D,
+) {
     // Initialize
     let mut points = [
         Vector2::new(300.0, 600.0),
@@ -90,9 +128,9 @@ fn bezier_curve_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
     .enumerate()
     .map(|(i, pos)| {
         let color = if i == 0 || i == 4 - 1 {
-            Color::BLUE
+            COLOR_BLUE
         } else {
-            Color::WHITE
+            COLOR_LIGHT
         };
         BasicPoint::new(*pos, color)
     })
@@ -148,15 +186,15 @@ fn bezier_curve_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
                     KeyboardKey::KEY_SPACE => {
                         if points.len() < 62 {
                             // Prevent binomial overflow
-                            points.last_mut().unwrap().color = Color::WHITE;
-                            let new_point = BasicPoint::new(mouse_position, Color::BLUE);
+                            points.last_mut().unwrap().color = COLOR_LIGHT;
+                            let new_point = BasicPoint::new(mouse_position, COLOR_BLUE);
                             points.push(new_point);
                         }
                     }
                     KeyboardKey::KEY_BACKSPACE => {
                         if points.len() > 2 {
                             points.pop();
-                            points.last_mut().unwrap().color = Color::BLUE;
+                            points.last_mut().unwrap().color = COLOR_BLUE;
                         }
                     }
                     KeyboardKey::KEY_ESCAPE => {
@@ -170,7 +208,7 @@ fn bezier_curve_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
         // Update Frame
         let mut rl_draw_handle = rl_handle.begin_drawing(rl_thread);
         let screen_width = rl_draw_handle.get_screen_width();
-        draw_background(&mut rl_draw_handle);
+        draw_background(&mut rl_draw_handle, tile_texture);
 
         let current_fps_text = format!("{} FPS", rl_draw_handle.get_fps());
         rl_draw_handle.draw_text(
@@ -178,7 +216,7 @@ fn bezier_curve_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
             screen_width - rl_draw_handle.measure_text(current_fps_text.as_str(), 14) - 30,
             20,
             14,
-            Color::GREEN,
+            COLOR_GREEN,
         );
 
         // Draw GUI Controls
@@ -217,7 +255,7 @@ fn bezier_curve_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
             screen_width - rl_draw_handle.measure_text(current_draw_time_text.as_str(), 14) - 30,
             50,
             14,
-            Color::WHITE,
+            COLOR_LIGHT,
         );
 
         // Update Animation
@@ -243,7 +281,11 @@ fn bezier_curve_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
     }
 }
 
-fn bezier_spline_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
+fn bezier_spline_scene(
+    rl_handle: &mut RaylibHandle,
+    rl_thread: &RaylibThread,
+    tile_texture: &Texture2D,
+) {
     // Initialize
     let mut points: Vec<Rc<RefCell<Box<dyn MovableGuiPoint>>>> = vec![Rc::new(RefCell::new(
         Box::new(JoinPoint::new(Vector2::new(300.0, 600.0), None, None)),
@@ -423,7 +465,7 @@ fn bezier_spline_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
         // Update Frame
         let mut rl_draw_handle = rl_handle.begin_drawing(rl_thread);
         let screen_width = rl_draw_handle.get_screen_width();
-        draw_background(&mut rl_draw_handle);
+        draw_background(&mut rl_draw_handle, tile_texture);
 
         let current_fps_text = format!("{} FPS", rl_draw_handle.get_fps());
         rl_draw_handle.draw_text(
@@ -431,7 +473,7 @@ fn bezier_spline_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
             screen_width - rl_draw_handle.measure_text(current_fps_text.as_str(), 14) - 30,
             20,
             14,
-            Color::GREEN,
+            COLOR_GREEN,
         );
 
         // Draw GUI Controls
@@ -498,7 +540,7 @@ fn bezier_spline_scene(rl_handle: &mut RaylibHandle, rl_thread: &RaylibThread) {
             screen_width - rl_draw_handle.measure_text(current_draw_time_text.as_str(), 14) - 30,
             50,
             14,
-            Color::WHITE,
+            COLOR_LIGHT,
         );
 
         // Update Animation
