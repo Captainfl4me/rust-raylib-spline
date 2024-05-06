@@ -204,6 +204,7 @@ fn bezier_curve_scene(
                 }
             }
         }
+        let show_help_page = rl_handle.is_key_down(KeyboardKey::KEY_H);
 
         // Update Frame
         let mut rl_draw_handle = rl_handle.begin_drawing(rl_thread);
@@ -257,6 +258,10 @@ fn bezier_curve_scene(
             14,
             COLOR_LIGHT,
         );
+
+        if show_help_page {
+            draw_help_page(&mut rl_draw_handle);
+        }
 
         // Update Animation
         if animated {
@@ -463,6 +468,7 @@ fn bezier_spline_scene(
                 }
             }
         }
+        let show_help_page = rl_handle.is_key_down(KeyboardKey::KEY_H);
 
         // Update Frame
         let mut rl_draw_handle = rl_handle.begin_drawing(rl_thread);
@@ -523,10 +529,26 @@ fn bezier_spline_scene(
             );
             if draw_bounding_box {
                 if let Ok(bb) = cubic_bezier_bounding_box(&cubic_bezier_points) {
-                    rl_draw_handle.draw_line_v(Vector2::new(bb.x, bb.y), Vector2::new(bb.x + bb.width, bb.y), COLOR_RED);
-                    rl_draw_handle.draw_line_v(Vector2::new(bb.x + bb.width, bb.y), Vector2::new(bb.x + bb.width, bb.y + bb.height), COLOR_RED);
-                    rl_draw_handle.draw_line_v(Vector2::new(bb.x + bb.width, bb.y + bb.height), Vector2::new(bb.x, bb.y + bb.height), COLOR_RED);
-                    rl_draw_handle.draw_line_v(Vector2::new(bb.x, bb.y + bb.height), Vector2::new(bb.x, bb.y), COLOR_RED);
+                    rl_draw_handle.draw_line_v(
+                        Vector2::new(bb.x, bb.y),
+                        Vector2::new(bb.x + bb.width, bb.y),
+                        COLOR_RED,
+                    );
+                    rl_draw_handle.draw_line_v(
+                        Vector2::new(bb.x + bb.width, bb.y),
+                        Vector2::new(bb.x + bb.width, bb.y + bb.height),
+                        COLOR_RED,
+                    );
+                    rl_draw_handle.draw_line_v(
+                        Vector2::new(bb.x + bb.width, bb.y + bb.height),
+                        Vector2::new(bb.x, bb.y + bb.height),
+                        COLOR_RED,
+                    );
+                    rl_draw_handle.draw_line_v(
+                        Vector2::new(bb.x, bb.y + bb.height),
+                        Vector2::new(bb.x, bb.y),
+                        COLOR_RED,
+                    );
                 }
             }
         }
@@ -548,10 +570,26 @@ fn bezier_spline_scene(
 
             if draw_bounding_box {
                 if let Ok(bb) = cubic_bezier_bounding_box(&cubic_bezier_points) {
-                    rl_draw_handle.draw_line_v(Vector2::new(bb.x, bb.y), Vector2::new(bb.x + bb.width, bb.y), COLOR_RED);
-                    rl_draw_handle.draw_line_v(Vector2::new(bb.x + bb.width, bb.y), Vector2::new(bb.x + bb.width, bb.y + bb.height), COLOR_RED);
-                    rl_draw_handle.draw_line_v(Vector2::new(bb.x + bb.width, bb.y + bb.height), Vector2::new(bb.x, bb.y + bb.height), COLOR_RED);
-                    rl_draw_handle.draw_line_v(Vector2::new(bb.x, bb.y + bb.height), Vector2::new(bb.x, bb.y), COLOR_RED);
+                    rl_draw_handle.draw_line_v(
+                        Vector2::new(bb.x, bb.y),
+                        Vector2::new(bb.x + bb.width, bb.y),
+                        COLOR_RED,
+                    );
+                    rl_draw_handle.draw_line_v(
+                        Vector2::new(bb.x + bb.width, bb.y),
+                        Vector2::new(bb.x + bb.width, bb.y + bb.height),
+                        COLOR_RED,
+                    );
+                    rl_draw_handle.draw_line_v(
+                        Vector2::new(bb.x + bb.width, bb.y + bb.height),
+                        Vector2::new(bb.x, bb.y + bb.height),
+                        COLOR_RED,
+                    );
+                    rl_draw_handle.draw_line_v(
+                        Vector2::new(bb.x, bb.y + bb.height),
+                        Vector2::new(bb.x, bb.y),
+                        COLOR_RED,
+                    );
                 }
             }
         }
@@ -566,6 +604,10 @@ fn bezier_spline_scene(
             14,
             COLOR_LIGHT,
         );
+
+        if show_help_page {
+            draw_help_page(&mut rl_draw_handle);
+        }
 
         // Update Animation
         if animated {
@@ -587,5 +629,33 @@ fn bezier_spline_scene(
         if clock_divider >= 60 {
             clock_divider = 0;
         }
+    }
+}
+
+pub fn draw_help_page(rl_draw_handle: &mut RaylibDrawHandle) {
+    let screen_width = rl_draw_handle.get_screen_width();
+    let screen_height = rl_draw_handle.get_screen_height();
+
+    let text_to_display = ["ESC - Go back to main menu", "SPACE - Add new (point or spline part) on mouse position", "BACKSPACE - Remove last (point or spline part)", "ENTER (spline only) - Close spline", "MOUSE CLICK - move point"];
+
+    let panel_width: i32 = 600;
+    let panel_height: i32 = 10 + 32 + 10 + 20*(text_to_display.len() as i32) + 10;
+    let panel_x = (screen_width - panel_width) / 2;
+    let panel_y = (screen_height - panel_height) / 2;
+    rl_draw_handle.draw_rectangle_rounded(
+        Rectangle::new(
+            panel_x as f32,
+            panel_y as f32,
+            panel_width as f32,
+            panel_height as f32,
+        ),
+        0.1,
+        20,
+        COLOR_DARK,
+    );
+    
+    rl_draw_handle.draw_text("HELP", panel_x + (panel_width - rl_draw_handle.measure_text("HELP", 32))/2, panel_y + 10, 32, COLOR_LIGHT);
+    for (i, text) in text_to_display.iter().enumerate() {
+        rl_draw_handle.draw_text(text, panel_x + 10, panel_y + 52 + (i as i32)*20, 18, COLOR_LIGHT);
     }
 }
