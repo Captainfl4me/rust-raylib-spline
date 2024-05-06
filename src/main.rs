@@ -8,27 +8,6 @@ mod scenes;
 mod colors;
 use colors::*;
 
-/* let current_fps_text = format!("{} FPS", rl_draw_handle.get_fps());
-        rl_draw_handle.draw_text(
-            current_fps_text.as_str(),
-            screen_width - rl_draw_handle.measure_text(current_fps_text.as_str(), 14) - 30,
-            20,
-            14,
-            COLOR_GREEN,
-        );
-
-        if clock_divider == 0 {
-            current_draw_time_text = format!("{:?}", draw_time_start.elapsed().unwrap());
-        }
-        rl_draw_handle.draw_text(
-            current_draw_time_text.as_str(),
-            screen_width - rl_draw_handle.measure_text(current_draw_time_text.as_str(), 14) - 30,
-            50,
-            14,
-            COLOR_LIGHT,
-        );
-*/
-
 fn main() {
     let (mut rl_handle, rl_thread) = raylib::init()
         .size(640, 480)
@@ -80,7 +59,7 @@ fn main() {
             draw_background(&mut rl_draw_handle, &background_tile_texture);
 
             if let Some(scene_id) = current_scene {
-                let draw_time_start = instant::Instant::now();
+                let draw_time_start = std::time::Instant::now();
                 scenes[scene_id].draw(&mut rl_draw_handle);
 
                 // Draw draw time at smaller pace than actual FPS to be able to read it.

@@ -3,11 +3,6 @@ name = "spline-drawer"
 version = "0.1.0"
 edition = "2021"
 
-[dependencies]
-instant = { version = "0.1.12", features = [ "stdweb" ] }
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies.raylib]
 version = "5.0.0"
 git = "https://github.com/Captainfl4me/raylib-rs"
