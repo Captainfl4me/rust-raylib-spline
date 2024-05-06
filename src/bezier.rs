@@ -422,3 +422,77 @@ pub fn draw_bezier(points: &[impl PointGui], d: &mut RaylibDrawHandle, t: Option
         point.draw(d);
     }
 }
+
+pub fn cubic_bezier_bounding_box(points: &[impl Point]) -> Result<Rectangle, String> {
+    if points.len() != 4 {
+        return Err("Cubic Bezier curve needs 4 points".to_string());
+    }
+    let p0 = points[0].get_position();
+    let p1 = points[1].get_position();
+    let p2 = points[2].get_position();
+    let p3 = points[3].get_position();
+
+    let a = -p0 * 3.0 + p1 * 9.0 - p2 * 9.0 + p3 * 3.0;
+    let b = p0 * 6.0 - p1 * 12.0 + p2 * 6.0;
+    let c = -p0 * 3.0 + p1 * 3.0;
+
+    let mut bbs = vec![p0, p3]; // Possible bounding box points
+
+    if a.x == 0.0 {
+        if b.x != 0.0 {
+            let t = -c.x / b.x;
+            bbs.push(evalute_bezier_curve(points, t));
+        }
+    } else {
+        let x_delta = b.x * b.x - 4.0 * a.x * c.x;
+        if x_delta >= 0.0 {
+            let x_t_min = (-b.x - x_delta.sqrt()) / (2.0 * a.x);
+            let x_t_max = (-b.x + x_delta.sqrt()) / (2.0 * a.x);
+            bbs.push(evalute_bezier_curve(points, x_t_min.clamp(0.0, 1.0)));
+            bbs.push(evalute_bezier_curve(points, x_t_max.clamp(0.0, 1.0)));
+        }
+    }
+
+    if a.y == 0.0 {
+        if b.y != 0.0 {
+            let t = -c.y / b.y;
+            bbs.push(evalute_bezier_curve(points, t));
+        }
+    } else {
+        let y_delta = b.y * b.y - 4.0 * a.y * c.y;
+        if y_delta >= 0.0 {
+            let y_t_min = (-b.y - y_delta.sqrt()) / (2.0 * a.y);
+            let y_t_max = (-b.y + y_delta.sqrt()) / (2.0 * a.y);
+            bbs.push(evalute_bezier_curve(points, y_t_min.clamp(0.0, 1.0)));
+            bbs.push(evalute_bezier_curve(points, y_t_max.clamp(0.0, 1.0)));
+        }
+    }
+
+    let x_min: f32 = bbs
+        .iter()
+        .map(|bb| bb.x)
+        .min_by(|a, b| a.total_cmp(b))
+        .unwrap();
+    let x_max: f32 = bbs
+        .iter()
+        .map(|bb| bb.x)
+        .max_by(|a, b| a.total_cmp(b))
+        .unwrap();
+    let y_min: f32 = bbs
+        .iter()
+        .map(|bb| bb.y)
+        .min_by(|a, b| a.total_cmp(b))
+        .unwrap();
+    let y_max: f32 = bbs
+        .iter()
+        .map(|bb| bb.y)
+        .max_by(|a, b| a.total_cmp(b))
+        .unwrap();
+
+    Ok(Rectangle {
+        x: x_min,
+        y: y_min,
+        width: (x_min - x_max).abs(),
+        height: (y_min - y_max).abs(),
+    })
+}

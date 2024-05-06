@@ -320,6 +320,7 @@ fn bezier_spline_scene(
     let mut animation_bounce = false;
     let mut has_point_selected = false;
     let mut debug_draw = true;
+    let mut draw_bounding_box = false;
     let mut lock_move = true;
     let mut clock_divider = 0;
     let mut is_closed_loop = false;
@@ -328,6 +329,7 @@ fn bezier_spline_scene(
     let left_slider_text = CStr::from_bytes_with_nul(b"0.0\0").unwrap();
     let right_slider_text = CStr::from_bytes_with_nul(b"1.0\0").unwrap();
     let animation_toggle_text = CStr::from_bytes_with_nul(b"Animate T value\0").unwrap();
+    let bounding_box_toggle_text = CStr::from_bytes_with_nul(b"Draw Bouding box\0").unwrap();
     let debug_text = CStr::from_bytes_with_nul(b"Activate debug draw\0").unwrap();
     let lock_move_text = CStr::from_bytes_with_nul(b"Lock points movement\0").unwrap();
     let mut current_draw_time_text = String::new();
@@ -496,9 +498,14 @@ fn bezier_spline_scene(
                 Some(animation_toggle_text),
                 &mut animated,
             );
+            rl_draw_handle.gui_toggle(
+                Rectangle::new(30.0, 110.0, 200.0, 25.0),
+                Some(bounding_box_toggle_text),
+                &mut draw_bounding_box,
+            );
         }
         rl_draw_handle.gui_toggle(
-            Rectangle::new(30.0, if debug_draw { 110.0 } else { 50.0 }, 200.0, 25.0),
+            Rectangle::new(30.0, if debug_draw { 140.0 } else { 50.0 }, 200.0, 25.0),
             Some(lock_move_text),
             &mut lock_move,
         );
@@ -514,6 +521,14 @@ fn bezier_spline_scene(
                 &mut rl_draw_handle,
                 if debug_draw { Some(t) } else { None },
             );
+            if draw_bounding_box {
+                if let Ok(bb) = cubic_bezier_bounding_box(&cubic_bezier_points) {
+                    rl_draw_handle.draw_line_v(Vector2::new(bb.x, bb.y), Vector2::new(bb.x + bb.width, bb.y), COLOR_RED);
+                    rl_draw_handle.draw_line_v(Vector2::new(bb.x + bb.width, bb.y), Vector2::new(bb.x + bb.width, bb.y + bb.height), COLOR_RED);
+                    rl_draw_handle.draw_line_v(Vector2::new(bb.x + bb.width, bb.y + bb.height), Vector2::new(bb.x, bb.y + bb.height), COLOR_RED);
+                    rl_draw_handle.draw_line_v(Vector2::new(bb.x, bb.y + bb.height), Vector2::new(bb.x, bb.y), COLOR_RED);
+                }
+            }
         }
         if is_closed_loop {
             let cubic_bezier_points = [
@@ -530,6 +545,15 @@ fn bezier_spline_scene(
                 &mut rl_draw_handle,
                 if debug_draw { Some(t) } else { None },
             );
+
+            if draw_bounding_box {
+                if let Ok(bb) = cubic_bezier_bounding_box(&cubic_bezier_points) {
+                    rl_draw_handle.draw_line_v(Vector2::new(bb.x, bb.y), Vector2::new(bb.x + bb.width, bb.y), COLOR_RED);
+                    rl_draw_handle.draw_line_v(Vector2::new(bb.x + bb.width, bb.y), Vector2::new(bb.x + bb.width, bb.y + bb.height), COLOR_RED);
+                    rl_draw_handle.draw_line_v(Vector2::new(bb.x + bb.width, bb.y + bb.height), Vector2::new(bb.x, bb.y + bb.height), COLOR_RED);
+                    rl_draw_handle.draw_line_v(Vector2::new(bb.x, bb.y + bb.height), Vector2::new(bb.x, bb.y), COLOR_RED);
+                }
+            }
         }
 
         if clock_divider == 0 {
