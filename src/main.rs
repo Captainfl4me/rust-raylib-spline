@@ -80,7 +80,7 @@ fn main() {
             draw_background(&mut rl_draw_handle, &background_tile_texture);
 
             if let Some(scene_id) = current_scene {
-                let draw_time_start = std::time::Instant::now();
+                let draw_time_start = instant::Instant::now();
                 scenes[scene_id].draw(&mut rl_draw_handle);
 
                 // Draw draw time at smaller pace than actual FPS to be able to read it.
