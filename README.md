@@ -17,3 +17,9 @@ Well, if you have read until here, I will assume that you are kind of interestin
     - Use `SPACE` to add a new control point at the mouse position.
     - Use `BACKSPACE` to remove the last control point.
     - Use the GUI to play with the settings of the visualization.
+- Bézier spline (only CPU is the limit)
+    - Use `SPACE` to attach a new cubic Bézier to the spline. You cannot add new part to a close spline.
+    - Use `BACKSPACE` to remove the cubic Bézier part or undo the close loop command.
+    - Use `ENTER` to attach the end and the start of the spline to create a close loop.
+    - Use the GUI to play with the settings of the visualization.
+    - Use the GUI to lock & unlock control points & joint to create more smooth splines.
