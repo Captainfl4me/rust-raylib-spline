@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies.raylib]
 version = "5.0.0"
-git = "https://github.com/Captainfl4me/raylib-rs"
+git = "https://github.com/raylib-rs/raylib-rs"
 branch = "5.0.0"
 
 # Enable a small amount of optimization in debug mode
