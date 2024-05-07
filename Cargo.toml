@@ -3,6 +3,11 @@ name = "spline-drawer"
 version = "0.1.0"
 edition = "2021"
 
+[dependencies.instant]
+version = "0.1.1"
+git = "https://github.com/hoodmane/instant"
+branch = "emscripten-no-leading-underscore"
+
 [dependencies.raylib]
 version = "5.0.0"
 git = "https://github.com/raylib-rs/raylib-rs"

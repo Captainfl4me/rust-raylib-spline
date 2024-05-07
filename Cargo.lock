@@ -187,6 +187,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "instant"
+version = "0.1.12"
+source = "git+https://github.com/hoodmane/instant?branch=emscripten-no-leading-underscore#8e4b0ed1683cb4dffdc0c132edadf1a25b914b08"
+dependencies = [
+ "cfg-if 1.0.0",
+]
+
+[[package]]
 name = "itertools"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -498,6 +506,7 @@ dependencies = [
 name = "spline-drawer"
 version = "0.1.0"
 dependencies = [
+ "instant",
  "raylib",
 ]
 

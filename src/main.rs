@@ -59,12 +59,12 @@ fn main() {
             draw_background(&mut rl_draw_handle, &background_tile_texture);
 
             if let Some(scene_id) = current_scene {
-                let draw_time_start = std::time::Instant::now();
+                let draw_time_start = instant::Instant::now();
                 scenes[scene_id].draw(&mut rl_draw_handle);
 
                 // Draw draw time at smaller pace than actual FPS to be able to read it.
                 if clock_divider == 0 {
-                    current_draw_time_text = format!("{:?}", draw_time_start.elapsed());
+                    current_draw_time_text = format!("{}ms", draw_time_start.elapsed().as_millis());
                 }
                 rl_draw_handle.draw_text(
                     current_draw_time_text.as_str(),
