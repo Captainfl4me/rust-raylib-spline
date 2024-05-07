@@ -15,9 +15,10 @@ RUN git clone https://github.com/emscripten-core/emsdk.git && \
 
 RUN mkdir /app 
 
-COPY Cargo.* /app/
-COPY build_wasm.sh /app/
-COPY src/ /app/src/
+COPY ./Cargo.* /app/
+COPY ./build_wasm.sh /app/
+COPY ./src/ /app/src/
+COPY ./assets/background_tile.png /app/assets/
 
 WORKDIR /app/
 
