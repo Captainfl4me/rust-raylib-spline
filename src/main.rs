@@ -56,7 +56,9 @@ fn main() {
             let screen_width = rl_draw_handle.get_screen_width();
             let screen_height = rl_draw_handle.get_screen_height();
             rl_draw_handle.clear_background(COLOR_DARK);
-            draw_background(&mut rl_draw_handle, &background_tile_texture);
+            if current_scene.is_none() || !scenes[current_scene.unwrap()].has_background() {
+                draw_background(&mut rl_draw_handle, &background_tile_texture);
+            }
 
             if let Some(scene_id) = current_scene {
                 let draw_time_start = instant::Instant::now();
