@@ -35,11 +35,11 @@ version = "0.69.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a00dc851838a2120612785d195287475a3ac45514741da670b735818822129a0"
 dependencies = [
- "bitflags 2.5.0",
+ "bitflags",
  "cexpr",
  "clang-sys",
  "itertools",
- "lazy_static 1.4.0",
+ "lazy_static",
  "lazycell",
  "log",
  "prettyplease",
@@ -51,12 +51,6 @@ dependencies = [
  "syn 2.0.66",
  "which",
 ]
-
-[[package]]
-name = "bitflags"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a6577517ecd0ee0934f48a7295a89aaef3e6dfafeac404f94c0b3448518ddfe"
 
 [[package]]
 name = "bitflags"
@@ -130,7 +124,7 @@ checksum = "c3c7c73a2d1e9fc0886a08b93e98eb643461230d5f1925e4036204d5f2e261a8"
 dependencies = [
  "autocfg",
  "cfg-if 0.1.10",
- "lazy_static 1.4.0",
+ "lazy_static",
 ]
 
 [[package]]
@@ -202,12 +196,6 @@ checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
 dependencies = [
  "either",
 ]
-
-[[package]]
-name = "lazy_static"
-version = "0.1.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf186d1a8aa5f5bee5fd662bc9c1b949e0259e1bcc379d1f006847b0080c7417"
 
 [[package]]
 name = "lazy_static"
@@ -323,12 +311,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pkg-config"
-version = "0.3.30"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d231b230927b5e4ad203db57bbcbee2802f6bce620b1e4a9024a07d94e2907ec"
-
-[[package]]
 name = "prettyplease"
 version = "0.2.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -358,23 +340,24 @@ dependencies = [
 
 [[package]]
 name = "raylib"
-version = "5.0.0"
-source = "git+https://github.com/raylib-rs/raylib-rs?branch=5.0.0#b8824d1c49f1dbd119d09667dae5f13bf6478799"
+version = "5.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "afd22532c5f4d413f428069d686875429989296ded0e84355ea1f8ba192dabda"
 dependencies = [
  "cfg-if 1.0.0",
- "lazy_static 1.4.0",
+ "lazy_static",
  "libc",
  "parking_lot",
  "raylib-sys",
  "specs",
  "specs-derive",
- "tcod",
 ]
 
 [[package]]
 name = "raylib-sys"
 version = "5.0.0"
-source = "git+https://github.com/raylib-rs/raylib-rs?branch=5.0.0#b8824d1c49f1dbd119d09667dae5f13bf6478799"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ecc8ee1bd66c8383858fc46b4846589656a18ae54f4e0cf84a242b0ec723fa37"
 dependencies = [
  "bindgen",
  "cc",
@@ -388,7 +371,7 @@ version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "469052894dcb553421e483e4209ee581a45100d31b4018de03e5a7ad86374a7e"
 dependencies = [
- "bitflags 2.5.0",
+ "bitflags",
 ]
 
 [[package]]
@@ -432,7 +415,7 @@ version = "0.38.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "70dc5ec042f7a43c4a73241207cecc9873a06d45debb38b329f8541d85c2730f"
 dependencies = [
- "bitflags 2.5.0",
+ "bitflags",
  "errno",
  "libc",
  "linux-raw-sys",
@@ -530,27 +513,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
-]
-
-[[package]]
-name = "tcod"
-version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44e518b0661949712e8dbc6d6d9d7c00a405dd88bc539102c1edfc2d22e5e144"
-dependencies = [
- "bitflags 0.1.1",
- "lazy_static 0.1.16",
- "tcod-sys",
-]
-
-[[package]]
-name = "tcod-sys"
-version = "5.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "730fb27d2261f7c860ae7a61c3ae70277f0836173ceeccb594193abb4fa5f4aa"
-dependencies = [
- "cc",
- "pkg-config",
 ]
 
 [[package]]
